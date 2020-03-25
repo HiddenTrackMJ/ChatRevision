@@ -110,6 +110,30 @@ ConnectRsp UserAgent::connectServer(string ip, int port, shared_ptr<LoginEvent> 
   }
 }
 
+int UserAgent::signUp(string ip, int port, shared_ptr<EventProcessor::SignUpEvent> signUpEvent) {
+  socketClient.reset(new SocketClient());
+  if (ERR == socketClient->connectServer(ip, port)) {
+    return ERR;
+  }
+
+  socketClient->socketSend(signUpEvent->toMsg());
+
+  int len{};
+  string receivedMsg{};
+
+  cout << "Waiting signUp response." << endl;
+  std::tie(len, receivedMsg) = socketClient->socketReceive();
+  cout << "signUp response: len=" << len << ", msg:" << receivedMsg << endl;
+
+  if (len < 0) {
+    return ERR;
+  } else if (receivedMsg != "OK") {
+    return ERR;
+  } else {
+    return OK;
+  }
+}
+
 void UserAgent::processEvent(shared_ptr<Event> evn) {
   switch (evn->eventType) {
     case (EventType::ChatMsg): {
@@ -137,6 +161,10 @@ void UserAgent::processEvent(shared_ptr<Event> evn) {
       cout << "process event [LogoutEvent]:" << event->getEventInfo() << endl;
       currState = UserState::WaitingUsername;
     } break;
+    case (EventType::SignUp): {
+      auto event = std::static_pointer_cast<SignUpEvent>(evn);
+      cout << "process event [SignUpEvent]:" << event->getEventInfo() << endl;
+    } break;
     default:
       break;
   }
@@ -150,6 +178,7 @@ void UserAgent::start() {
 
   string username{};
   string passwd{};
+  int state = 2;
 
   std::this_thread::sleep_for(100ms);
 
@@ -157,6 +186,22 @@ void UserAgent::start() {
     memset(inputBuff, 0, inputBuffSize);
 
     switch (currState) {
+      case UserState::WaitingSighUpOrLogin:
+        cout << "×¢²áÇë°´1£¬µÇÂ¼Çë°´2:" << endl;
+        cin.getline(inputBuff, inputBuffSize);
+        if (*inputBuff == '1') {
+          state = 1;
+          currState = UserState::WaitingUsername;
+        }
+        else if (*inputBuff == '2') {
+          state = 2;
+          currState = UserState::WaitingUsername;
+        }
+        else {
+          cout << "ÊäÈë´íÎó£¡" << endl;
+          currState = UserState::WaitingSighUpOrLogin;
+        }
+        break;
       case UserState::WaitingUsername:
         cout << "ÇëÊäÈëÓÃ»§Ãû:";
         cin.getline(inputBuff, inputBuffSize);
@@ -167,7 +212,17 @@ void UserAgent::start() {
         cout << "ÇëÊäÈëÃÜÂë:";
         cin.getline(inputBuff, inputBuffSize);
         passwd = inputBuff;
-        currState = UserState::Connecting;
+        if (state == 2) currState = UserState::Connecting;
+        else {
+          auto signUpEvent = std::make_shared<SignUpEvent>(username, passwd);
+          if (OK == signUp(SERVER_IP, SERVER_PORT, signUpEvent)) {
+            cout << "sign up success." << endl;
+            currState = UserState::WaitingSighUpOrLogin;
+          } else {
+            cout << "connect error." << endl;
+            currState = UserState::WaitingSighUpOrLogin;
+          }
+        }
         break;
       case UserState::Connecting:
         if (OK == setupConnection(SERVER_IP, SERVER_PORT, username, passwd)) {

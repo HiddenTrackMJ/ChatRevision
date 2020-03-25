@@ -15,7 +15,7 @@ class SocketServer {
   std::map<unsigned int, string> clientsWithUserName{};
   std::map<string, unsigned int> usernameToSocketIdMap{};
 
-  const std::map<string, string> userPasswdMap{
+  std::map<string, string> userPasswdMap{
       {"zz", "123"},
       {"tt", "321"},
   };
@@ -43,4 +43,6 @@ class SocketServer {
   void clientConnet(unsigned int clientId);
 
   bool loginAuth(unsigned int clientId, string user, string passwd);
+
+  bool signUp(unsigned int clientId, string user, string pwd);
 };

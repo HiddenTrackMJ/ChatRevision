@@ -104,6 +104,15 @@ void SocketServer::selecting() {
           case '2': {
             auto event = EventProcessor::LogoutEvent::create(eventStr);
           } break;
+          case '3': {
+            auto event = EventProcessor::SignUpEvent::create(eventStr);
+            auto success = signUp(clientId, event->username, event->passwd);
+            if (!success) {
+              cout << "Error: clientId[" << clientId << "] create user["
+                   << event->username << "] error!" << endl;
+              kick(clientId);
+            }
+          } break;
           default:
             cout << "error event: " << eventStr << endl;
             break;
@@ -247,6 +256,30 @@ bool SocketServer::loginAuth(unsigned int clientId, string user, string passwd) 
     return true;
   } else {
     cout << "clientId[" << clientId << "] loginAuth failed. passwd error for username=" << user
+         << endl;
+    return false;
+  }
+}
+
+bool SocketServer::signUp(unsigned int clientId, string user, string passwd) {
+  auto it = userPasswdMap.find(user);
+  if (it == userPasswdMap.end()) {
+    cout << "clientId[" << clientId << "] sighUp success. username=" << user << endl;
+    // userPasswdMap.insert(std::pair<string, string>(user, passwd));
+    userPasswdMap[user] = passwd;
+   /* auto it = usernameToSocketIdMap.find(user);
+    if (it != usernameToSocketIdMap.end()) {
+      auto oldClientId = it->second;
+      cout << "already login [" << user << "]. Kick old ClientId[" << oldClientId << "]"
+           << endl;
+      kick(oldClientId);
+    }
+    clientsWithUserName[clientId] = user;
+    usernameToSocketIdMap[user] = clientId; */
+    sendSocketData(clientId, "OK");
+    return true;
+  } else {
+    cout << "Warning! user name[" << user << " has been userd. Please try another name."
          << endl;
     return false;
   }

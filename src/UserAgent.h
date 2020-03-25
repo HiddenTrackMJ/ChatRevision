@@ -20,14 +20,14 @@ using std::unique_ptr;
 
 enum class ConnectRsp { ConnectSuccess, ConnectError, AuthFailure };
 
-enum class UserState { WaitingUsername, WaitingPasswd, Connecting, Connected };
+enum class UserState {WaitingSighUpOrLogin, WaitingUsername, WaitingPasswd, Connecting, Connected };
 
 class UserAgent : public EventProcessor {
   UserAgent(const UserAgent&) = delete;
   UserAgent(const UserAgent&&) = delete;
   UserAgent operator=(const UserAgent&) = delete;
 
-  UserState currState{UserState::WaitingUsername};
+  UserState currState{UserState::WaitingSighUpOrLogin};
   unique_ptr<SocketClient> socketClient{};
   string currentUser{""};
 
@@ -40,6 +40,8 @@ class UserAgent : public EventProcessor {
   int readSocketData(const SOCKET s, char* const buff, const int buffSize);
 
   ConnectRsp connectServer(string ip, int port, shared_ptr<LoginEvent> loginMsg);
+
+  int signUp(string ip, int port, shared_ptr<SignUpEvent> signUpMsg);
 
  protected:
   void processEvent(shared_ptr<Event> evn) override final;

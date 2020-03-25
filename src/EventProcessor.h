@@ -23,7 +23,7 @@ using std::thread;
 
 class EventProcessor {
  public:
-  enum class EventType { Login, ChatMsg, Logout };
+  enum class EventType { Login, ChatMsg, Logout, SignUp };
 
   /*
    * toString:  EventTypeId|member1|member2
@@ -204,6 +204,61 @@ class EventProcessor {
     }
   };
 
+  struct SignUpEvent final : Event {
+    SignUpEvent(const string& u, const string& p)
+        : Event{EventType::SignUp}, username(u), passwd(p){};
+
+    static shared_ptr<SignUpEvent> create(const string& data) {
+      shared_ptr<SignUpEvent> ptr{};
+      bool parseFailed = false;
+
+      const int len = 256;
+      char buff[len]{};
+      if (data[0] == '3') {
+        try {
+          stringstream ss{data};
+          ss.getline(buff, len, '|');
+          // skip eventType id;
+          ss.getline(buff, len, '|');
+          string u{buff};
+          ss.getline(buff, len, '|');
+          string p{buff};
+          ptr.reset(new SignUpEvent(u, p));
+        } catch (...) {
+          parseFailed = true;
+        }
+      } else {
+        parseFailed = true;
+      }
+
+      if (parseFailed) {
+        string info{"SignUpEvent parse failed for ["};
+        info += data;
+        info += "]";
+        throw info;
+      } else {
+        return ptr;
+      }
+    }
+
+    const string username;
+    const string passwd;
+    string getEventInfo() override {
+      string s{"[SignUp, username="};
+      s += username;
+      s += "]";
+      return s;
+    }
+
+    string toMsg() override {
+      stringstream ss{};
+      ss << static_cast<int>(eventType) << "|";
+      ss << username << "|";
+      ss << passwd << "|";
+      return ss.str();
+    }
+  };
+
  private:
   list<shared_ptr<Event>> eventList{};
   condition_variable cv{};
@@ -276,6 +331,9 @@ class EventProcessor {
         break;
       case '2':
         event = EventProcessor::LogoutEvent::create(evnStr);
+        break;
+      case '3':
+        event = EventProcessor::SignUpEvent::create(evnStr);
         break;
       default:
         break;
